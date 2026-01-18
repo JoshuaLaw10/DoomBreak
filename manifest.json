@@ -1,0 +1,30 @@
+{
+  "name": "DoomBreak — Overlay",
+  "version": "6.7.0",
+  "manifest_version": 3,
+  "description": "3-panel doomscroll overlay while ChatGPT generates; closes when done!",
+  "permissions": ["storage"],
+  "host_permissions": [
+  "https://chatgpt.com/*",
+  "https://*.chatgpt.com/*",
+  "https://www.youtube.com/*"
+  ],
+  "background": { "service_worker": "service_worker.js" },
+  "action": {
+    "default_title": "DoomBreak",
+    "default_popup": "popup.html"
+  },
+  "content_scripts": [
+    {
+      "matches": ["https://chatgpt.com/*", "https://*.chatgpt.com/*"],
+      "js": ["content_script.js"],
+      "run_at": "document_idle"
+    }
+  ],
+  "web_accessible_resources": [
+    {
+      "resources": ["media/*.mp4"],
+      "matches": ["https://chatgpt.com/*", "https://*.chatgpt.com/*"]
+    }
+  ]
+}

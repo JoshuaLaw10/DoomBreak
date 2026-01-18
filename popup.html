@@ -1,0 +1,70 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <title>Doomscroll Break</title>
+    <style>
+      body { font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif; width: 260px; padding: 12px; }
+      .row { display: flex; align-items: center; justify-content: space-between; margin: 10px 0; gap: 10px; }
+      button { width: 100%; padding: 10px; border: 0; border-radius: 12px; cursor: pointer; font-weight: 800; }
+      .on { background: #16a34a; color: white; }
+      .off { background: #ef4444; color: white; }
+
+      .hint { font-size: 12px; color: #444; margin-top: 10px; line-height: 1.35; }
+      code { background: #f3f4f6; padding: 2px 6px; border-radius: 6px; }
+
+      /* Toggle switch */
+      .switch { position: relative; display: inline-block; width: 44px; height: 26px; flex: 0 0 auto; }
+      .switch input { opacity: 0; width: 0; height: 0; }
+      .slider {
+        position: absolute; cursor: pointer; inset: 0;
+        background-color: #e5e7eb; border-radius: 999px;
+        transition: .18s;
+      }
+      .slider:before {
+        position: absolute; content: "";
+        height: 20px; width: 20px; left: 3px; top: 3px;
+        background-color: white; border-radius: 999px;
+        transition: .18s;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.18);
+      }
+      input:checked + .slider { background-color: #111827; }
+      input:checked + .slider:before { transform: translateX(18px); }
+
+      .labelCol { display:flex; flex-direction:column; min-width:0; }
+      .label { font-weight: 800; font-size: 13px; color:#111827; line-height: 1.1; }
+      .sub { font-size: 11.5px; color:#6b7280; line-height: 1.2; white-space: nowrap; overflow:hidden; text-overflow: ellipsis; max-width: 170px; }
+    </style>
+  </head>
+  <body>
+    <h3 style="margin:0 0 8px 0;">Doomscroll Break</h3>
+
+    <div class="row">
+      <div>Status:</div>
+      <div id="status">…</div>
+    </div>
+
+    <button id="toggleBtn">…</button>
+
+    <!-- NEW: Prompt-aware toggle -->
+    <div class="row" style="margin-top:12px;">
+      <div class="labelCol">
+        <div class="label">Prompt-Aware Mode</div>
+        <div class="sub">Reels match your prompt vibe</div>
+      </div>
+
+      <label class="switch" title="Match reels to your prompt">
+        <input id="promptMode" type="checkbox" />
+        <span class="slider"></span>
+      </label>
+    </div>
+
+    <div class="hint">
+      Works on <code>chatgpt.com</code>.<br />
+      Turn ON → send prompt → doomscroll overlay appears → closes when answer is ready.<br />
+      Prompt-Aware ON → themed reels • OFF → random reels.
+    </div>
+
+    <script src="popup.js"></script>
+  </body>
+</html>
