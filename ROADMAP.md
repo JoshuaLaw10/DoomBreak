@@ -24,11 +24,11 @@
 
 Convert the framing from "product" to "engineering case study." Honest narrative, no spin.
 
-- [ ] **Rewrite the README opening.** Lead with the engineering, not the product pitch. Suggested first line:
+- [x] **Rewrite the README opening.** Lead with the engineering, not the product pitch. Suggested first line:
   > *"A Chrome extension built before AI providers added background-task notifications. The product premise has since been absorbed by the platforms — but the engineering remains a useful case study in MV3 architecture, DOM adapter patterns, and resilience telemetry."*
-- [ ] **Add a "Why this exists" section** that explicitly names the timing — built pre-background-notify, shipped as engineering writeup not as live product. This honesty is a *strength* on a resume; pretending otherwise is a weakness.
-- [ ] **Add a "What I'd build differently in 2026" section.** Shows product judgment. Reference the brutal review (mechanic vs. dopamine model mismatch, full-screen vs. PiP, etc).
-- [ ] **Move the original poetic README** to `docs/ORIGINAL_PITCH.md` as a historical artifact.
+- [x] **Add a "Why this exists" section** that explicitly names the timing — built pre-background-notify, shipped as engineering writeup not as live product. This honesty is a *strength* on a resume; pretending otherwise is a weakness.
+- [x] **Add a "What I'd build differently in 2026" section.** Shows product judgment. Reference the brutal review (mechanic vs. dopamine model mismatch, full-screen vs. PiP, etc).
+- [x] **Move the original poetic README** to `docs/ORIGINAL_PITCH.md` as a historical artifact.
 
 ---
 
@@ -74,6 +74,7 @@ Structure:
 6. **What the product taught me about timing.** Be honest: built before background-notify shipped on the platforms. Product is dead, engineering is alive. *This paragraph is the most valuable one.*
 
 Publish to:
+- [x] Draft written → `docs/WRITEUP.md` (publish to blog/HN when demo video is ready)
 - [ ] Personal blog (if you have one) or dev.to / Medium / Substack
 - [ ] Cross-post to Hacker News with title: *"Show HN: A Chrome extension whose product is dead but whose engineering isn't"* — the meta-honesty does well on HN
 - [ ] LinkedIn post linking the writeup
