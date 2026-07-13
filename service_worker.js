@@ -16,17 +16,27 @@
 // Install / update handler
 // ---------------------------------------------------------------------------
 chrome.runtime.onInstalled.addListener(function(details) {
-  // Set sensible defaults on first install; don't overwrite on update.
-  if (details.reason === 'install') {
-    chrome.storage.local.set({
-      enabled:     true,    // extension on by default
-      soundOn:     false,   // sound off by default
-      promptMode:  false,   // prompt-aware mode off by default
-      sloganIndex: 0,
-      autoCloseStreak: {},
-      selectorTelemetry: {},
-    });
-  }
+  // Fill in defaults for MISSING keys only. 'install' can re-fire for the
+  // same profile (reinstall, unpacked dev reload) — blind set() here would
+  // wipe the user's streak, prefs, and selector telemetry.
+  if (details.reason !== 'install') return;
+
+  var DEFAULTS = {
+    enabled:     true,    // extension on by default
+    soundOn:     false,   // sound off by default
+    promptMode:  false,   // prompt-aware mode off by default
+    sloganIndex: 0,
+    autoCloseStreak: {},
+    selectorTelemetry: {},
+  };
+
+  chrome.storage.local.get(Object.keys(DEFAULTS), function(existing) {
+    var toSet = {};
+    for (var key in DEFAULTS) {
+      if (existing[key] === undefined) toSet[key] = DEFAULTS[key];
+    }
+    if (Object.keys(toSet).length) chrome.storage.local.set(toSet);
+  });
 });
 
 // ---------------------------------------------------------------------------

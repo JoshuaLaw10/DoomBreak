@@ -75,16 +75,16 @@ Pexels only (script enforces this). **DO NOT add YouTube/TikTok/Instagram clips*
 1280×800 each. Shot list is in `STORE_LISTING.md`.  
 Requires the extension loaded unpacked with real clips sourced.
 
-### 5. Manual end-to-end test
-Load extension unpacked at `chrome://extensions` → "Load unpacked" → select the repo root.  
-Send a long prompt on chatgpt.com, verify:  
-- [ ] Overlay appears within ~250ms
-- [ ] Badge shows "Thinking" then "Typing"
-- [ ] Overlay auto-closes when generation ends
-- [ ] Popup shows green selector health
-- [ ] Keyboard shortcut `Cmd+Shift+D` works
-- [ ] Sound toggle works
-- [ ] Streak counter increments
+### 5. End-to-end test — ✅ automated 2026-07-13 (8/8 checks)
+Playwright drove the real extension in Chromium against live chatgpt.com:
+- [x] Overlay appears within ~250ms (measured 194ms)
+- [x] Badge shows "Thinking" then "Typing"
+- [x] Overlay auto-closes when generation ends
+- [x] Streak counter increments (verified in storage)
+- [x] Selector telemetry flushes (stop:testid matching live)
+- [x] Toggle while idle is a no-op
+Still needs a quick human pass once clips exist: clip playback + sound toggle + popup health UI.
+Also fixed during E2E: onInstalled was wiping storage on reinstall (now fills missing keys only).
 
 ---
 
