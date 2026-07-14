@@ -51,6 +51,8 @@ A Chrome extension (MV3) that shows a self-closing video overlay on chatgpt.com 
 
 ## 🔴 Blocked on human action
 
+**Only step 6/7 remain: create the $5 dev account and submit.** Upload `dist/doombreak-v1.0.0.zip` (rebuild anytime with `npm run package`), paste copy from `STORE_LISTING.md`, privacy URL: https://joshualaw10.github.io/DoomBreak/privacy.html
+
 These **cannot be done by code alone** — they require a browser or physical action:
 
 ### 1. ~~Enable GitHub Pages~~ ✅ Done 2026-07-13 via `gh api`
@@ -63,17 +65,16 @@ tests active and passing. They caught real drift: conversation turns are now
 `platforms/chatgpt.js`. Real-DOM note: during earliest "thinking", the stop button
 exists but NO turns are rendered yet (signature=0 is what distinguishes thinking).
 
-### 3. Source clips (~15 min, was several hours)
-Get a free key at https://www.pexels.com/api/ then:
-```
-PEXELS_API_KEY=xxx npm run source -- --per-tag 16   # 80 clips
-npm run feed                                        # validate + regenerate data/feed.js
-```
-Pexels only (script enforces this). **DO NOT add YouTube/TikTok/Instagram clips** — instant Chrome Web Store rejection.
+### 3. ~~Source clips~~ ✅ Done 2026-07-14
+80 Pexels clips committed in media/ (16 per tag, 33.8MB, each <700KB), feed
+regenerated, attribution in data/feed.js. Key saved as PEXELS_API_KEY in
+~/.zshrc for future re-sourcing. Pexels only — YouTube/TikTok/Instagram =
+instant rejection.
 
-### 4. Take 5 screenshots (30 min)
-1280×800 each. Shot list is in `STORE_LISTING.md`.  
-Requires the extension loaded unpacked with real clips sourced.
+### 4. ~~Take 5 screenshots~~ ✅ Done 2026-07-14
+Auto-captured from the live extension at 1280×800 → `store-assets/`
+(hero, thinking, typing, popup health, streak). Final clip E2E: 7/7 —
+panels playing, muted by default, sound toggle, streak, popup health green.
 
 ### 5. End-to-end test — ✅ automated 2026-07-13 (8/8 checks)
 Playwright drove the real extension in Chromium against live chatgpt.com:
