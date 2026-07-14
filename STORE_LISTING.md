@@ -38,7 +38,7 @@ FEATURES
 PRIVACY
 100% local. No data leaves your device. No analytics. No servers. All clips are bundled with the extension — no network requests are ever made.
 
-Works only on chatgpt.com.
+Works on chatgpt.com and gemini.google.com.
 ```
 
 ---
@@ -49,8 +49,8 @@ Works only on chatgpt.com.
 ### `storage`
 > Doomscroll Break uses `chrome.storage.local` to persist user preferences (on/off, mute, prompt-aware mode), a daily auto-close streak counter, and per-selector match telemetry that powers the popup health check. No data is transmitted externally.
 
-### Host access: `https://chatgpt.com/*` (content script match pattern)
-> A content script runs on chatgpt.com to observe the DOM via MutationObserver and detect when ChatGPT begins and finishes generating a response. This is the core function of the extension and requires direct page access. No page content is read, stored, or transmitted.
+### Host access: `https://chatgpt.com/*` and `https://gemini.google.com/*` (content script match patterns)
+> A content script runs on chatgpt.com and gemini.google.com to observe the DOM via MutationObserver and detect when the AI begins and finishes generating a response. This is the core function of the extension and requires direct page access. No page content is read, stored, or transmitted.
 
 ---
 

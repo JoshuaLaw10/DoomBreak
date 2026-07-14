@@ -1,19 +1,20 @@
 // platforms/gemini.js
 // ============================================================
-// ⚠️ EXPERIMENTAL / UNVERIFIED — platform adapter for
-// gemini.google.com. Same caveats as platforms/claude.js: these
-// selectors are drafts, unvalidated without a logged-in session.
-// Capture fixtures + add tests before enabling in a store build.
-//
-// Failure mode is safe: no selector match → no overlay.
+// Platform adapter for gemini.google.com.
+// VERIFIED live 2026-07-14: overlay appeared and auto-closed on a real
+// logged-in session; fixtures in tests/fixtures/gemini-*.html.
+// Real-DOM notes: <model-response> does not exist during early thinking
+// (signature 0 = thinking, same as ChatGPT); <user-query> renders
+// immediately after send.
 // ============================================================
 
 'use strict';
 
+// Verified against live gemini.google.com 2026-07-14 (fixture capture):
+// 'Stop response' aria-label present during thinking+typing, absent idle.
 var _GEMINI_STOP_SELECTORS = [
   'button[aria-label="Stop response"]',
   'button[aria-label*="Stop"]',
-  '.stop-icon',
 ];
 
 var _GEMINI_ASSISTANT_SEL = 'model-response, message-content, [id^="model-response-message"]';

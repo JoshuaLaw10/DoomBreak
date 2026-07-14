@@ -53,6 +53,8 @@ A Chrome extension (MV3) that shows a self-closing video overlay on chatgpt.com 
 
 **Only step 6/7 remain: create the $5 dev account and submit.** Upload `dist/doombreak-v1.1.0.zip` (rebuild anytime with `npm run package`), paste copy from `STORE_LISTING.md`, pick 5 of the 6 screenshots in `store-assets/`, privacy URL: https://joshualaw10.github.io/DoomBreak/privacy.html
 
+**v1.2.0 (2026-07-14): GEMINI SUPPORT VERIFIED LIVE.** Platform registry (window.Platform) + gemini.google.com adapter — overlay appeared/auto-closed on real Gemini (logged-out chat works, fully reproducible via `npm run verify:gemini`); fixtures in tests/fixtures/gemini-*.html, 8 fixture tests. claude.ai adapter remains an UNVERIFIED draft (user skipped login verification): file kept in platforms/claude.js, but claude.ai is NOT in the manifest — re-add only after `npm run verify:claude` passes. Store zip: dist/doombreak-v1.2.0.zip. Submission copy in STORE_LISTING.md covers both hosts.
+
 **v1.1.0 (2026-07-14):** vibe picker (😂🌊🏀🎯🐱🐶 chips in popup → `feedTags`), Mini Player / PiP mode (`overlayMode: 'pip'`, corner 300×480, 1 panel), 24 new cats/dogs clips (104 total, 44.6MB), prompt-aware respects vibe selection. 102 tests; live E2E 12/12 including vibe-filtered PiP on chatgpt.com. Multi-LLM adapter work lives on branch `experimental/multi-llm` — do NOT merge until selectors are verified against logged-in Claude/Gemini sessions.
 
 These **cannot be done by code alone** — they require a browser or physical action:

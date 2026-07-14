@@ -45,7 +45,7 @@ Doomscroll Break makes **zero network requests**. All video clips are bundled wi
 | Permission | Why it's needed |
 |---|---|
 | `storage` | To read and write the preference/telemetry keys listed above |
-| Content script on `chatgpt.com` | The content script must run on chatgpt.com to observe the DOM and detect generation state |
+| Content script on `chatgpt.com` / `gemini.google.com` | The content script must run on chatgpt.com to observe the DOM and detect generation state |
 
 ---
 
