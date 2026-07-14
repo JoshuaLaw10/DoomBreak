@@ -18,6 +18,7 @@
 // =================================================================
 
 import { readFileSync, writeFileSync, existsSync, statSync, readdirSync } from 'node:fs';
+import { execFileSync } from 'node:child_process';
 import { dirname, join, basename } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -144,6 +145,33 @@ if (placeholderCount > 0) {
   warn(`${placeholderCount} clip(s) still have @TODO / TODO placeholders. Fill them in before publishing.`);
 }
 
+// ── Step 4.5: probe audio tracks ──────────────────────────────────────────
+// Most stock footage is silent; the runtime uses this flag to steer the
+// sound-target panel to a clip that can actually make sound.
+
+let ffprobeOk = true;
+try { execFileSync('ffprobe', ['-version'], { stdio: 'ignore' }); }
+catch { ffprobeOk = false; warn('ffprobe not found — emitting audio:false for all clips'); }
+
+const audioMap = {};
+let audioCount = 0;
+for (const f of mediaFiles) {
+  let has = false;
+  if (ffprobeOk) {
+    try {
+      const out = execFileSync('ffprobe', [
+        '-v', 'quiet', '-select_streams', 'a',
+        '-show_entries', 'stream=codec_type', '-of', 'csv=p=0',
+        join(MEDIA_DIR, f),
+      ]).toString();
+      has = out.includes('audio');
+    } catch { /* treat as silent */ }
+  }
+  audioMap[f] = has;
+  if (has) audioCount++;
+}
+ok(`Audio tracks: ${audioCount}/${mediaFiles.length} clips`);
+
 // ── Step 5: validate file sizes ───────────────────────────────────────────
 
 let totalBytes = 0;
@@ -182,6 +210,7 @@ const feedEntries = sortedFiles.map(filename => {
   const m = metadata[filename];
   return {
     file:     filename,
+    audio:    !!audioMap[filename],
     tags:     m.tags || [],
     creator:  m.creator,
     title:    m.title,
@@ -207,7 +236,7 @@ const lines = [
 
 for (const entry of feedEntries) {
   lines.push('  {');
-  lines.push(`    file: ${JSON.stringify(entry.file)},`);
+  lines.push(`    file: ${JSON.stringify(entry.file)}, audio: ${entry.audio},`);
   lines.push(`    tags: ${JSON.stringify(entry.tags)},`);
   lines.push(`    creator: ${JSON.stringify(entry.creator)}, title: ${JSON.stringify(entry.title)},`);
   lines.push(`    license: ${JSON.stringify(entry.license)}, source: ${JSON.stringify(entry.source)},`);

@@ -59,11 +59,11 @@ async function loadModule() {
   ];
   global.SLOGANS = ['Slogan A', 'Slogan B', 'Slogan C'];
   global.FEED    = [
-    { file: 'sport_001.mp4', tags: ['sport'], title: 'S1', creator: 'A', license: 'Pexels', source: 'https://pexels.com/1' },
-    { file: 'calm_001.mp4',  tags: ['calm'],  title: 'C1', creator: 'B', license: 'Pexels', source: 'https://pexels.com/2' },
-    { file: 'funny_001.mp4', tags: ['funny'], title: 'F1', creator: 'C', license: 'Pexels', source: 'https://pexels.com/3' },
-    { file: 'focus_001.mp4', tags: ['focus'], title: 'K1', creator: 'D', license: 'Pexels', source: 'https://pexels.com/4' },
-    { file: 'sport_002.mp4', tags: ['sport'], title: 'S2', creator: 'E', license: 'Pexels', source: 'https://pexels.com/5' },
+    { file: 'sport_001.mp4', audio: false, tags: ['sport'], title: 'S1', creator: 'A', license: 'Pexels', source: 'https://pexels.com/1' },
+    { file: 'calm_001.mp4',  audio: false, tags: ['calm'],  title: 'C1', creator: 'B', license: 'Pexels', source: 'https://pexels.com/2' },
+    { file: 'funny_001.mp4', audio: false, tags: ['funny'], title: 'F1', creator: 'C', license: 'Pexels', source: 'https://pexels.com/3' },
+    { file: 'focus_001.mp4', audio: true,  tags: ['focus'], title: 'K1', creator: 'D', license: 'Pexels', source: 'https://pexels.com/4' },
+    { file: 'sport_002.mp4', audio: false, tags: ['sport'], title: 'S2', creator: 'E', license: 'Pexels', source: 'https://pexels.com/5' },
   ];
 
   const mod = await import('../content_script.js?t=' + Date.now());
@@ -293,6 +293,48 @@ describe('reels: _advanceReel()', () => {
     const before = mod.getVideos()[0].getAttribute('data-file');
     mod._onReelWheel(0, 5, null);
     expect(mod.getVideos()[0].getAttribute('data-file')).toBe(before);
+  });
+
+  it('one trackpad gesture = one advance (momentum swallowed)', () => {
+    vi.useFakeTimers();
+    try {
+      mod._showOverlay();
+      const start = mod.getVideos()[0].getAttribute('data-file');
+      mod._onReelWheel(0, 300, null); // the flick
+      const afterFlick = mod.getVideos()[0].getAttribute('data-file');
+      expect(afterFlick).not.toBe(start);
+      // Momentum deltas trailing the flick
+      mod._onReelWheel(0, 180, null);
+      mod._onReelWheel(0, 90, null);
+      expect(mod.getVideos()[0].getAttribute('data-file')).toBe(afterFlick);
+      // After 200ms of quiet, the next gesture advances again
+      vi.advanceTimersByTime(250);
+      mod._onReelWheel(0, 300, null);
+      expect(mod.getVideos()[0].getAttribute('data-file')).not.toBe(afterFlick);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+});
+
+// ===========================================================================
+// Sound steers to an audible clip
+// ===========================================================================
+describe('audible-clip steering', () => {
+  it('after _ensureAudibleTarget the target clip has audio (pool permitting)', () => {
+    mod._showOverlay();
+    mod._ensureAudibleTarget();
+    const target = mod.getVideos()[mod.getSoundIdx()].getAttribute('data-file');
+    const entry = global.FEED.find(c => c.file === target);
+    expect(entry.audio).toBe(true);
+  });
+
+  it('is a no-op when the whole pool is silent', () => {
+    global.FEED = global.FEED.map(c => ({ ...c, audio: false }));
+    mod._showOverlay();
+    const before = mod.getVideos()[mod.getSoundIdx()].getAttribute('data-file');
+    mod._ensureAudibleTarget();
+    expect(mod.getVideos()[mod.getSoundIdx()].getAttribute('data-file')).toBe(before);
   });
 });
 

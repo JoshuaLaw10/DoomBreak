@@ -60,7 +60,8 @@ var _playlist       = [];      // shuffled clip pool for this overlay session
 var _plCursor       = 0;       // next playlist index to serve
 var _panelHist      = [];      // per-panel history of shown files (for scroll-back)
 var _soundIdx       = 0;       // panel index that gets audio when sound is on
-var _lastReelAt     = 0;       // wheel throttle timestamp
+var _wheelGate      = false;   // true while swallowing trackpad momentum
+var _wheelQuiet     = null;    // timer that reopens the gate after quiet
 
 // ---------------------------------------------------------------------------
 // Helpers — storage
@@ -345,7 +346,7 @@ function _makeVideo(file) {
   return v;
 }
 
-function _advanceReel(idx, dir) {
+function _advanceReel(idx, dir, requireAudio) {
   if (!_overlayEl || !_playlist.length) return false;
   var panels = _overlayEl.querySelectorAll('.db-panel');
   var panel = panels[idx];
@@ -358,13 +359,22 @@ function _advanceReel(idx, dir) {
     if (!_panelHist[idx] || !_panelHist[idx].length) return false;
     file = _panelHist[idx].pop();
   } else {
+    var pick = _plCursor;
+    if (requireAudio) {
+      // Serve the next clip that can actually make sound (most stock
+      // footage is silent). Falls back to the normal next clip if the
+      // whole pool is silent.
+      for (var j = 0; j < _playlist.length; j++) {
+        if (_playlist[(_plCursor + j) % _playlist.length].audio) { pick = _plCursor + j; break; }
+      }
+    }
     if (cur) {
       _panelHist[idx] = _panelHist[idx] || [];
       _panelHist[idx].push(cur.getAttribute('data-file'));
       if (_panelHist[idx].length > 60) _panelHist[idx].shift();
     }
-    file = _playlist[_plCursor % _playlist.length].file;
-    _plCursor++;
+    file = _playlist[pick % _playlist.length].file;
+    _plCursor = pick + 1;
   }
 
   var next = _makeVideo(file);
@@ -402,16 +412,45 @@ function _advanceReel(idx, dir) {
   return true;
 }
 
+// Trackpads keep emitting momentum deltas long after the flick. One gesture
+// = one advance: the first qualifying delta fires, then the gate swallows
+// everything until the stream has been quiet for 200ms.
+function _resetWheelQuiet() {
+  if (_wheelQuiet) clearTimeout(_wheelQuiet);
+  _wheelQuiet = setTimeout(function() { _wheelGate = false; _wheelQuiet = null; }, 200);
+}
+
 function _onReelWheel(idx, deltaY, e) {
+  if (e) e.preventDefault(); // never let the page behind scroll
   if (Math.abs(deltaY) < 12) return;
-  var now = Date.now();
-  if (now - _lastReelAt < 350) { if (e) e.preventDefault(); return; }
-  _lastReelAt = now;
-  if (e) e.preventDefault();
+  if (_wheelGate) { _resetWheelQuiet(); return; } // momentum — swallow
+  _wheelGate = true;
+  _resetWheelQuiet();
   _advanceReel(idx, deltaY > 0 ? 1 : -1);
 }
 
+// When sound turns on and the target panel's clip is silent, swap it for the
+// next clip that has an audio track. No-op if the whole pool is silent
+// (e.g. cats-only — stock cat footage has no sound).
+function _ensureAudibleTarget() {
+  var v = _videos[_soundIdx];
+  if (!v) return;
+  var file = v.getAttribute('data-file');
+  for (var i = 0; i < _playlist.length; i++) {
+    if (_playlist[i].file === file) {
+      if (_playlist[i].audio) return; // already audible
+      break;
+    }
+  }
+  var hasAudible = _playlist.some(function(c) { return c.audio; });
+  if (hasAudible) _advanceReel(_soundIdx, 1, true);
+}
+
 function _wireReels() {
+  // Swallow wheel everywhere on the overlay so the page never scrolls
+  // behind it (panels additionally advance reels).
+  _overlayEl.addEventListener('wheel', function(e) { e.preventDefault(); }, { passive: false });
+
   var panels = _overlayEl.querySelectorAll('.db-panel');
   Array.prototype.forEach.call(panels, function(panel, idx) {
     panel.addEventListener('wheel', function(e) {
@@ -491,6 +530,7 @@ function _showOverlay() {
     soundBtn.addEventListener('click', function() {
       _soundOn = !_soundOn;
       _storageSet({ [SOUND_STORAGE_KEY]: _soundOn });
+      if (_soundOn) _ensureAudibleTarget();
       _applySound();
     });
   }
@@ -790,6 +830,7 @@ if (typeof module !== 'undefined') {
     _pickClips:     _pickClips,
     _advanceReel:   _advanceReel,
     _onReelWheel:   _onReelWheel,
+    _ensureAudibleTarget: _ensureAudibleTarget,
     getPlaylist:    function() { return _playlist; },
     getSoundIdx:    function() { return _soundIdx; },
     getVideos:      function() { return _videos; },
@@ -826,7 +867,8 @@ if (typeof module !== 'undefined') {
       _plCursor          = 0;
       _panelHist         = [];
       _soundIdx          = 0;
-      _lastReelAt        = 0;
+      _wheelGate         = false;
+      if (_wheelQuiet) { clearTimeout(_wheelQuiet); _wheelQuiet = null; }
     },
 
     _setState:   function(s) { _state = s; },

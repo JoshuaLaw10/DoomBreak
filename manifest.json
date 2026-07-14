@@ -1,6 +1,6 @@
 {
   "name": "Doomscroll Break",
-  "version": "1.3.0",
+  "version": "1.3.1",
   "manifest_version": 3,
   "description": "Intentional doomscrolling while ChatGPT or Gemini thinks. Closes itself when your answer is ready.",
   "minimum_chrome_version": "116",

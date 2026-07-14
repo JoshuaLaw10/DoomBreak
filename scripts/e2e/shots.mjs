@@ -63,6 +63,11 @@ try {
   await page.waitForTimeout(350); // let panels paint
   await page.screenshot({ path: join(OUT, '2-thinking.png') });
 
+  // Streak footer (read early — fast generations can auto-close the overlay
+  // before the later shots finish)
+  const streakText = await page.locator('#doombreak-streak').textContent().catch(() => '');
+  check('streak footer shows a count', /[0-9] breaks? today/.test(streakText || ''), '"' + streakText + '"');
+
   // Clips actually playing?
   await page.waitForTimeout(1200);
   const playing = await page.evaluate(() => {
@@ -113,10 +118,8 @@ try {
   await page.waitForTimeout(2500);
   await page.screenshot({ path: join(OUT, '1-hero.png') });
 
-  // SHOT 5 — Streak footer visible
-  const streakText = await page.locator('#doombreak-streak').textContent();
-  check('streak footer shows a count', /[0-9] breaks? today/.test(streakText || ''), '"' + streakText + '"');
-  await page.screenshot({ path: join(OUT, '5-streak.png') });
+  // SHOT 5 — Streak footer visible (best-effort: overlay may have closed)
+  if (await overlay.count()) await page.screenshot({ path: join(OUT, '5-streak.png') });
 
   // Auto-close
   await overlay.waitFor({ state: 'detached', timeout: 180000 });
