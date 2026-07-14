@@ -441,10 +441,17 @@ function _tick(snapshot) {
 // Observer + heartbeat lifecycle
 // ---------------------------------------------------------------------------
 
+function _platform() {
+  // Registry-selected adapter for this host (platforms/registry.js), with a
+  // ChatGPT fallback for tests and pre-registry load orders.
+  if (typeof Platform !== 'undefined' && Platform) return Platform;
+  if (typeof ChatGPT !== 'undefined') return ChatGPT;
+  return null;
+}
+
 function _getSnapshot() {
-  if (typeof ChatGPT !== 'undefined') {
-    return ChatGPT.getStateSnapshot();
-  }
+  var p = _platform();
+  if (p) return p.getStateSnapshot();
   return { generating: false, turnCount: 0, signature: 0, lastUserPrompt: '' };
 }
 
@@ -477,7 +484,8 @@ function _stopHeartbeat() {
 
 function _reconnectObserver() {
   if (!_observer) return;
-  var target = (typeof ChatGPT !== 'undefined') ? ChatGPT.getObserverTarget() : document.body;
+  var p = _platform();
+  var target = p ? p.getObserverTarget() : document.body;
   _observer.observe(target || document.body, {
     childList: true,
     subtree: true,

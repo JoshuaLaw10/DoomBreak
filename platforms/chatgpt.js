@@ -312,6 +312,12 @@ var ChatGPT = {
   },
 };
 
+// Register with the multi-platform registry (platforms/registry.js).
+if (typeof window !== 'undefined') {
+  window.__DB_PLATFORMS = window.__DB_PLATFORMS || [];
+  window.__DB_PLATFORMS.push({ hosts: ['chatgpt.com'], adapter: ChatGPT });
+}
+
 // ---------------------------------------------------------------------------
 // Test exports — expose internals for telemetry tests.
 // ---------------------------------------------------------------------------

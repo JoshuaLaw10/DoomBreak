@@ -1,6 +1,6 @@
 {
   "name": "Doomscroll Break",
-  "version": "1.1.0",
+  "version": "1.2.0",
   "manifest_version": 3,
   "description": "Intentional doomscrolling while ChatGPT thinks. Closes itself when your answer is ready.",
   "minimum_chrome_version": "116",
@@ -46,6 +46,35 @@
         "data/slogans.js",
         "data/feed.js",
         "platforms/chatgpt.js",
+        "platforms/registry.js",
+        "content_script.js"
+      ],
+      "run_at": "document_idle"
+    },
+    {
+      "matches": [
+        "https://claude.ai/*"
+      ],
+      "js": [
+        "data/keywords.js",
+        "data/slogans.js",
+        "data/feed.js",
+        "platforms/claude.js",
+        "platforms/registry.js",
+        "content_script.js"
+      ],
+      "run_at": "document_idle"
+    },
+    {
+      "matches": [
+        "https://gemini.google.com/*"
+      ],
+      "js": [
+        "data/keywords.js",
+        "data/slogans.js",
+        "data/feed.js",
+        "platforms/gemini.js",
+        "platforms/registry.js",
         "content_script.js"
       ],
       "run_at": "document_idle"
@@ -58,8 +87,11 @@
       ],
       "matches": [
         "https://chatgpt.com/*",
-        "https://*.chatgpt.com/*"
+        "https://*.chatgpt.com/*",
+        "https://claude.ai/*",
+        "https://gemini.google.com/*"
       ]
     }
-  ]
+  ],
+  "version_name": "1.2.0-multi-llm-experimental"
 }
