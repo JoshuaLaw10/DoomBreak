@@ -32,6 +32,8 @@ const SHIP = [
   'data/slogans.js',
   'data/feed.js',
   'platforms/chatgpt.js',
+  'platforms/gemini.js',
+  'platforms/registry.js',
 ];
 
 const errors = [];
