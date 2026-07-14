@@ -10,9 +10,10 @@ When ChatGPT is generating, you instinctively open a new tab and start scrolling
 
 ## Features
 
-- **Auto-close** — the overlay disappears the instant ChatGPT finishes, so you never miss your answer
+- **Auto-close** — the overlay disappears the instant the AI finishes, so you never miss your answer
+- **Scrollable reels** — wheel or swipe to snap to the next clip, scroll up to go back
 - **Live status badge** — Thinking → Typing as the response develops
-- **Prompt-Aware Mode** — ask about sports, get sports clips; ask something calm, get calm clips
+- **Prompt-Aware Mode** (on by default) — ask about sports, get sports clips; ask something calm, get calm clips
 - **Daily streak counter** — see how many times it pulled you back today
 - **Sound toggle** and keyboard shortcut (Cmd/Ctrl+Shift+D)
 - **Selector health check** — the popup warns you if ChatGPT changed its DOM and detection might be degraded
@@ -101,7 +102,7 @@ mod._resetForTest();
 
 The `?t=` cache-buster forces vitest to treat each dynamic import as a new module, which re-runs all top-level initialization. Paired with `if (typeof module !== 'undefined') { module.exports = {...} }` at the bottom of the script, this gives full unit testability without spinning up a real browser.
 
-**Result: 92 passing tests**, including 7 fixture tests that run the adapter against real captured ChatGPT DOM (July 2026).
+**Result: 127 passing tests**, including fixture suites that run the adapters against real captured ChatGPT and Gemini DOM (July 2026), plus a Playwright E2E harness that drives the real extension against the live sites (`npm run e2e`, `npm run shots`).
 
 ---
 
@@ -166,7 +167,7 @@ _tick(snapshot)              ← state machine
 
 ```bash
 npm install
-npx vitest run          # 92 passing
+npx vitest run          # 127 passing
 npm run source          # download clips from Pexels (needs PEXELS_API_KEY)
 npm run feed            # validate media/ + regenerate data/feed.js
 npm run package         # build dist/doombreak-vX.Y.Z.zip for the store

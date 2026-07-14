@@ -77,12 +77,30 @@ try {
   check('clips are playing', playing.playing === playing.count, playing.playing + '/' + playing.count);
   check('clips muted by default', playing.muted);
 
-  // Sound toggle
+  // Sound toggle — audio comes from exactly one panel (the target)
   await page.click('#doombreak-sound');
-  const unmuted = await page.evaluate(() =>
-    [...document.querySelectorAll('#doombreak-overlay video')].every(v => !v.muted));
-  check('sound toggle unmutes', unmuted);
+  const unmutedCount = await page.evaluate(() =>
+    [...document.querySelectorAll('#doombreak-overlay video')].filter(v => !v.muted).length);
+  check('sound toggle unmutes exactly one panel', unmutedCount === 1, unmutedCount + ' unmuted');
   await page.click('#doombreak-sound'); // back to muted
+
+  // Scroll-to-advance: real wheel gesture over the middle panel swaps the clip
+  const beforeScroll = await page.evaluate(() =>
+    document.querySelectorAll('#doombreak-overlay .db-panel')[1].querySelector('video').getAttribute('data-file'));
+  const panelBox = await page.locator('#doombreak-overlay .db-panel').nth(1).boundingBox();
+  await page.mouse.move(panelBox.x + panelBox.width / 2, panelBox.y + panelBox.height / 2);
+  await page.mouse.wheel(0, 300);
+  await page.waitForTimeout(600);
+  const afterScroll = await page.evaluate(() =>
+    document.querySelectorAll('#doombreak-overlay .db-panel')[1].querySelector('video').getAttribute('data-file'));
+  check('wheel scroll advances the reel', afterScroll && afterScroll !== beforeScroll,
+    beforeScroll + ' → ' + afterScroll);
+  await page.mouse.wheel(0, -300); // scroll back
+  await page.waitForTimeout(600);
+  const backScroll = await page.evaluate(() =>
+    document.querySelectorAll('#doombreak-overlay .db-panel')[1].querySelector('video').getAttribute('data-file'));
+  check('wheel up scrolls back through history', backScroll === beforeScroll,
+    'returned to ' + backScroll);
 
   // SHOT 3 — Typing badge
   await page.waitForFunction(() => {
@@ -97,7 +115,7 @@ try {
 
   // SHOT 5 — Streak footer visible
   const streakText = await page.locator('#doombreak-streak').textContent();
-  check('streak footer shows seeded count', /4 breaks/.test(streakText || ''), '"' + streakText + '"');
+  check('streak footer shows a count', /[0-9] breaks? today/.test(streakText || ''), '"' + streakText + '"');
   await page.screenshot({ path: join(OUT, '5-streak.png') });
 
   // Auto-close

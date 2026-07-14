@@ -240,6 +240,93 @@ describe('_pickClips() vibe filter', () => {
 });
 
 // ===========================================================================
+// Scroll-to-advance reels
+// ===========================================================================
+describe('reels: _advanceReel()', () => {
+  it('scrolling forward swaps in the next playlist clip', () => {
+    mod._showOverlay();
+    const before = mod.getVideos()[0].getAttribute('data-file');
+    expect(mod._advanceReel(0, 1)).toBe(true);
+    const after = mod.getVideos()[0].getAttribute('data-file');
+    expect(after).not.toBe(before);
+  });
+
+  it('scrolling back restores the previous clip', () => {
+    mod._showOverlay();
+    const first = mod.getVideos()[0].getAttribute('data-file');
+    mod._advanceReel(0, 1);
+    expect(mod._advanceReel(0, -1)).toBe(true);
+    expect(mod.getVideos()[0].getAttribute('data-file')).toBe(first);
+  });
+
+  it('scrolling back with no history is a no-op', () => {
+    mod._showOverlay();
+    expect(mod._advanceReel(0, -1)).toBe(false);
+  });
+
+  it('cycles the playlist without running out', () => {
+    mod._showOverlay();
+    for (let i = 0; i < 15; i++) expect(mod._advanceReel(1, 1)).toBe(true);
+    expect(mod.getVideos()[1].getAttribute('data-file')).toBeTruthy();
+  });
+
+  it('panels advance independently', () => {
+    mod._showOverlay();
+    const p1 = mod.getVideos()[1].getAttribute('data-file');
+    mod._advanceReel(0, 1);
+    expect(mod.getVideos()[1].getAttribute('data-file')).toBe(p1);
+  });
+
+  it('interacting with a panel makes it the sound target', () => {
+    mod._showOverlay();
+    expect(mod.getSoundIdx()).toBe(1); // centre by default
+    mod._advanceReel(2, 1);
+    expect(mod.getSoundIdx()).toBe(2);
+  });
+
+  it('is a no-op when no overlay is showing', () => {
+    expect(mod._advanceReel(0, 1)).toBe(false);
+  });
+
+  it('wheel handler ignores tiny deltas', () => {
+    mod._showOverlay();
+    const before = mod.getVideos()[0].getAttribute('data-file');
+    mod._onReelWheel(0, 5, null);
+    expect(mod.getVideos()[0].getAttribute('data-file')).toBe(before);
+  });
+});
+
+// ===========================================================================
+// Sound targets one panel
+// ===========================================================================
+describe('sound targeting', () => {
+  it('sound on unmutes only the target panel', () => {
+    mod._setSoundOn(true);
+    mod._showOverlay();
+    const muted = mod.getVideos().map(v => v.muted);
+    expect(muted.filter(m => !m)).toHaveLength(1);
+    expect(muted[mod.getSoundIdx()]).toBe(false);
+  });
+
+  it('sound off mutes every panel', () => {
+    mod._setSoundOn(false);
+    mod._showOverlay();
+    expect(mod.getVideos().every(v => v.muted)).toBe(true);
+  });
+});
+
+// ===========================================================================
+// Prompt-aware default
+// ===========================================================================
+describe('prompt-aware default', () => {
+  it('boots ON when storage has no promptMode key', async () => {
+    mod._boot();
+    await new Promise(r => setTimeout(r, 0));
+    expect(mod.getPromptMode()).toBe(true);
+  });
+});
+
+// ===========================================================================
 // PiP (mini player) mode
 // ===========================================================================
 describe('PiP overlay mode', () => {

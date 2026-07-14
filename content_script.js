@@ -54,8 +54,13 @@ var _promptMode     = false;
 var _feedTags       = null;    // enabled vibe tags; null = no filter (all clips)
 var _overlayMode    = 'full';  // 'full' | 'pip'
 var _activeTag      = null;    // tag detected from last prompt
-var _videos         = [];      // tracked <video> elements for cleanup
+var _videos         = [];      // tracked <video> elements for cleanup (per panel)
 var _sloganIndex    = 0;
+var _playlist       = [];      // shuffled clip pool for this overlay session
+var _plCursor       = 0;       // next playlist index to serve
+var _panelHist      = [];      // per-panel history of shown files (for scroll-back)
+var _soundIdx       = 0;       // panel index that gets audio when sound is on
+var _lastReelAt     = 0;       // wheel throttle timestamp
 
 // ---------------------------------------------------------------------------
 // Helpers — storage
@@ -149,7 +154,8 @@ function _detectTag(prompt) {
 // Helpers — clip selection
 // ---------------------------------------------------------------------------
 
-function _pickClips(count) {
+function _filterPool(minTagged) {
+  minTagged = minTagged || 1;
   var feed = (typeof FEED !== 'undefined' && FEED.length) ? FEED : [];
   if (!feed.length) return [];
 
@@ -176,13 +182,21 @@ function _pickClips(count) {
     var tagged = pool.filter(function(c) {
       return Array.isArray(c.tags) && c.tags.indexOf(_activeTag) !== -1;
     });
-    if (tagged.length >= count) pool = tagged;
+    if (tagged.length >= minTagged) pool = tagged;
     // If not enough tagged clips, fall back to the vibe pool
   }
 
-  // Shuffle and pick `count` unique clips
-  var shuffled = pool.slice().sort(function() { return Math.random() - 0.5; });
-  return shuffled.slice(0, count);
+  return pool;
+}
+
+function _shuffled(pool) {
+  return pool.slice().sort(function() { return Math.random() - 0.5; });
+}
+
+function _pickClips(count) {
+  var pool = _filterPool(count);
+  if (!pool.length) return [];
+  return _shuffled(pool).slice(0, count);
 }
 
 // ---------------------------------------------------------------------------
@@ -227,7 +241,15 @@ function _buildOverlay(clips) {
     '#doombreak-badge-text { color:#fff;font-size:11.5px;font-weight:700; }',
     '#doombreak-panels { display:flex;flex:1;gap:2px; }',
     '.db-panel { flex:1;overflow:hidden;position:relative;background:#111; }',
-    '.db-panel video { width:100%;height:100%;object-fit:cover;display:block; }',
+    '.db-panel video { position:absolute;inset:0;width:100%;height:100%;object-fit:cover;display:block; }',
+    '.db-hint {',
+    '  position:absolute;left:50%;bottom:70px;transform:translateX(-50%);z-index:3;',
+    '  background:rgba(0,0,0,.55);backdrop-filter:blur(4px);border-radius:16px;',
+    '  color:rgba(255,255,255,.9);font-size:12px;font-weight:600;padding:6px 13px;',
+    '  pointer-events:none;white-space:nowrap;',
+    '  animation:db-hint 4s ease forwards;',
+    '}',
+    '@keyframes db-hint{0%,60%{opacity:1}100%{opacity:0}}',
     '#doombreak-footer {',
     '  position:absolute;bottom:0;left:0;right:0;z-index:2;',
     '  padding:32px 18px 18px;',
@@ -275,7 +297,7 @@ function _buildOverlay(clips) {
         : '';
       return [
         '<div class="db-panel">',
-        src ? '<video autoplay muted loop playsinline src="' + _escHtml(src) + '"></video>' : '',
+        src ? '<video autoplay muted loop playsinline data-file="' + _escHtml(clip.file) + '" src="' + _escHtml(src) + '"></video>' : '',
         '</div>',
       ].join('');
     }).join(''),
@@ -304,18 +326,145 @@ function _escHtml(str) {
 }
 
 // ---------------------------------------------------------------------------
+// Reels — scroll-to-advance
+// Wheel / swipe on a panel snaps to the next clip from the session playlist;
+// scrolling up returns through that panel's history. The last-interacted
+// panel becomes the audio target when sound is on.
+// ---------------------------------------------------------------------------
+
+function _makeVideo(file) {
+  var v = document.createElement('video');
+  v.autoplay = true;
+  v.loop = true;
+  v.muted = true;
+  v.setAttribute('playsinline', '');
+  v.setAttribute('data-file', file);
+  v.src = (typeof chrome !== 'undefined' && chrome.runtime)
+    ? chrome.runtime.getURL('media/' + file)
+    : 'media/' + file;
+  return v;
+}
+
+function _advanceReel(idx, dir) {
+  if (!_overlayEl || !_playlist.length) return false;
+  var panels = _overlayEl.querySelectorAll('.db-panel');
+  var panel = panels[idx];
+  if (!panel) return false;
+
+  var cur = panel.querySelector('video');
+  var file;
+  if (dir < 0) {
+    // Scroll back through this panel's own history
+    if (!_panelHist[idx] || !_panelHist[idx].length) return false;
+    file = _panelHist[idx].pop();
+  } else {
+    if (cur) {
+      _panelHist[idx] = _panelHist[idx] || [];
+      _panelHist[idx].push(cur.getAttribute('data-file'));
+      if (_panelHist[idx].length > 60) _panelHist[idx].shift();
+    }
+    file = _playlist[_plCursor % _playlist.length].file;
+    _plCursor++;
+  }
+
+  var next = _makeVideo(file);
+  panel.appendChild(next);
+
+  // TikTok-style snap: old slides out, new slides in (skipped for
+  // reduced-motion users and environments without Web Animations).
+  var reduced = typeof matchMedia !== 'undefined' &&
+    matchMedia('(prefers-reduced-motion: reduce)').matches;
+  var from = dir < 0 ? '-100%' : '100%';
+  var to   = dir < 0 ? '100%'  : '-100%';
+  if (cur) {
+    if (!reduced && cur.animate) {
+      next.animate([{ transform: 'translateY(' + from + ')' }, { transform: 'translateY(0)' }],
+        { duration: 220, easing: 'ease-out' });
+      var out = cur.animate([{ transform: 'translateY(0)' }, { transform: 'translateY(' + to + ')' }],
+        { duration: 220, easing: 'ease-out' });
+      out.onfinish = function() { cur.remove(); };
+      // Safety net if onfinish never fires (tab hidden)
+      setTimeout(function() { if (cur.parentNode) cur.remove(); }, 500);
+    } else {
+      cur.remove();
+    }
+    cur.pause();
+    cur.removeAttribute('src');
+    try { cur.load(); } catch (_) {}
+  }
+
+  var hint = panel.querySelector('.db-hint');
+  if (hint) hint.remove();
+
+  _videos[idx] = next;
+  _soundIdx = idx; // attention follows interaction
+  _applySound();
+  return true;
+}
+
+function _onReelWheel(idx, deltaY, e) {
+  if (Math.abs(deltaY) < 12) return;
+  var now = Date.now();
+  if (now - _lastReelAt < 350) { if (e) e.preventDefault(); return; }
+  _lastReelAt = now;
+  if (e) e.preventDefault();
+  _advanceReel(idx, deltaY > 0 ? 1 : -1);
+}
+
+function _wireReels() {
+  var panels = _overlayEl.querySelectorAll('.db-panel');
+  Array.prototype.forEach.call(panels, function(panel, idx) {
+    panel.addEventListener('wheel', function(e) {
+      _onReelWheel(idx, e.deltaY, e);
+    }, { passive: false });
+
+    var touchY = null;
+    panel.addEventListener('touchstart', function(e) {
+      if (e.touches && e.touches.length) touchY = e.touches[0].clientY;
+    }, { passive: true });
+    panel.addEventListener('touchend', function(e) {
+      if (touchY === null || !e.changedTouches || !e.changedTouches.length) return;
+      var delta = touchY - e.changedTouches[0].clientY;
+      touchY = null;
+      if (Math.abs(delta) > 40) _advanceReel(idx, delta > 0 ? 1 : -1);
+    }, { passive: true });
+  });
+
+  // One-time affordance hint on the middle (or only) panel
+  var hintPanel = panels[Math.floor(panels.length / 2)];
+  if (hintPanel && _playlist.length > panels.length) {
+    var hint = document.createElement('div');
+    hint.className = 'db-hint';
+    hint.textContent = '↕ scroll for more';
+    hintPanel.appendChild(hint);
+    setTimeout(function() { if (hint.parentNode) hint.remove(); }, 4500);
+  }
+}
+
+// ---------------------------------------------------------------------------
 // Overlay — lifecycle
 // ---------------------------------------------------------------------------
 
 function _showOverlay() {
   if (_overlayEl) return; // already showing
 
-  var clips = _pickClips(_overlayMode === 'pip' ? 1 : PANEL_COUNT);
+  var panelTarget = _overlayMode === 'pip' ? 1 : PANEL_COUNT;
+
+  // Session playlist: the whole (vibe/prompt-filtered) pool, shuffled once.
+  // Panels seed from the front; scrolling serves the rest, cycling forever.
+  _playlist  = _shuffled(_filterPool(panelTarget));
+  _plCursor  = Math.min(panelTarget, _playlist.length);
+  _panelHist = [];
+
+  var clips = _playlist.slice(0, panelTarget);
   _overlayEl = _buildOverlay(clips);
   document.body.appendChild(_overlayEl);
 
   // Track video elements for cleanup
   _videos = Array.from(_overlayEl.querySelectorAll('video'));
+  _soundIdx = Math.floor(_videos.length / 2); // centre panel gets audio first
+
+  _wireReels();
 
   // Apply sound preference
   _applySound();
@@ -379,17 +528,25 @@ function _setBadge(state) {
 
 function _applySound() {
   var soundBtn = document.getElementById('doombreak-sound');
-  _videos.forEach(function(v) { v.muted = !_soundOn; });
+  // Audio plays from ONE panel — the last one interacted with (centre by
+  // default). Unmuting all three at once is noise, not sound.
+  _videos.forEach(function(v, i) {
+    if (v) v.muted = !(_soundOn && i === _soundIdx);
+  });
   if (soundBtn) soundBtn.textContent = _soundOn ? '🔊 Sound' : '🔇 Sound';
 }
 
 function _releaseVideos() {
   _videos.forEach(function(v) {
+    if (!v) return;
     v.pause();
     v.removeAttribute('src');
     v.load(); // release media resources
   });
   _videos = [];
+  _playlist  = [];
+  _plCursor  = 0;
+  _panelHist = [];
 }
 
 // ---------------------------------------------------------------------------
@@ -555,7 +712,7 @@ function _boot() {
   // Load persisted preferences
   _storageGet([SOUND_STORAGE_KEY, PROMPT_MODE_KEY, ENABLED_STORAGE_KEY, FEED_TAGS_KEY, OVERLAY_MODE_KEY], function(res) {
     _soundOn     = !!res[SOUND_STORAGE_KEY];
-    _promptMode  = !!res[PROMPT_MODE_KEY];
+    _promptMode  = res[PROMPT_MODE_KEY] !== false; // headline feature: default ON
     _feedTags    = Array.isArray(res[FEED_TAGS_KEY]) ? res[FEED_TAGS_KEY] : null;
     _overlayMode = res[OVERLAY_MODE_KEY] === 'pip' ? 'pip' : 'full';
     var enabled  = res[ENABLED_STORAGE_KEY] !== false; // default enabled
@@ -594,7 +751,7 @@ if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.onChanged)
       else _boot();
     }
     if (changes[PROMPT_MODE_KEY]) {
-      _promptMode = !!changes[PROMPT_MODE_KEY].newValue;
+      _promptMode = changes[PROMPT_MODE_KEY].newValue !== false;
     }
     if (changes[FEED_TAGS_KEY]) {
       var v = changes[FEED_TAGS_KEY].newValue;
@@ -631,6 +788,11 @@ if (typeof module !== 'undefined') {
     _tick:          _tick,
     _detectTag:     _detectTag,
     _pickClips:     _pickClips,
+    _advanceReel:   _advanceReel,
+    _onReelWheel:   _onReelWheel,
+    getPlaylist:    function() { return _playlist; },
+    getSoundIdx:    function() { return _soundIdx; },
+    getVideos:      function() { return _videos; },
     _escHtml:       _escHtml,
     _currentSlogan: _currentSlogan,
     _nextSlogan:    _nextSlogan,
@@ -660,6 +822,11 @@ if (typeof module !== 'undefined') {
       _activeTag         = null;
       _videos            = [];
       _sloganIndex       = 0;
+      _playlist          = [];
+      _plCursor          = 0;
+      _panelHist         = [];
+      _soundIdx          = 0;
+      _lastReelAt        = 0;
     },
 
     _setState:   function(s) { _state = s; },

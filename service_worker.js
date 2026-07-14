@@ -24,7 +24,7 @@ chrome.runtime.onInstalled.addListener(function(details) {
   var DEFAULTS = {
     enabled:     true,    // extension on by default
     soundOn:     false,   // sound off by default
-    promptMode:  false,   // prompt-aware mode off by default
+    promptMode:  true,    // prompt-aware mode ON by default (headline feature)
     sloganIndex: 0,
     autoCloseStreak: {},
     selectorTelemetry: {},

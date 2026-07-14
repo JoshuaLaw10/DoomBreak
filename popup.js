@@ -127,7 +127,7 @@ function refresh() {
     ['enabled', 'promptMode', 'overlayMode', 'feedTags', 'selectorTelemetry'],
     function(res) {
       renderToggle(res.enabled !== false); // default: enabled
-      promptEl.checked = !!res.promptMode;
+      promptEl.checked = res.promptMode !== false; // default ON
       pipEl.checked    = res.overlayMode === 'pip';
       var tags = Array.isArray(res.feedTags) ? res.feedTags : [];
       vibeEls.forEach(function(el) {
