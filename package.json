@@ -10,11 +10,17 @@
     "feed": "node scripts/generate-feed.mjs",
     "icons": "node scripts/generate-icons.mjs",
     "source": "node scripts/source-clips.mjs",
-    "package": "node scripts/package.mjs"
+    "package": "node scripts/package.mjs",
+    "e2e": "node scripts/e2e/e2e.mjs",
+    "shots": "node scripts/e2e/shots.mjs",
+    "promo": "node scripts/e2e/promo.mjs",
+    "verify:claude": "node scripts/e2e/verify-platform.mjs claude",
+    "verify:gemini": "node scripts/e2e/verify-platform.mjs gemini"
   },
   "devDependencies": {
     "@vitest/coverage-v8": "^1.6.0",
     "jsdom": "^24.0.0",
+    "playwright": "^1.61.1",
     "sharp": "^0.34.5",
     "vitest": "^1.6.0"
   }

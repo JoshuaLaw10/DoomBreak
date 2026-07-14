@@ -5,3 +5,6 @@ metadata.json
 coverage/
 dist/
 .env
+.e2e-profiles/
+*-wait-status.png
+*-overlay.png
