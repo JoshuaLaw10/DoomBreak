@@ -318,6 +318,52 @@ describe('reels: _advanceReel()', () => {
 });
 
 // ===========================================================================
+// Shorts-style per-clip captions
+// ===========================================================================
+describe('clip captions', () => {
+  it('shows the clip title as a caption on initial render', () => {
+    mod._showOverlay();
+    const panels = document.querySelectorAll('.db-panel');
+    const captions = Array.from(panels).map(p => p.querySelector('.db-caption')?.textContent);
+    // Fixture FEED titles are S1/C1/F1/K1/S2 — every rendered panel's
+    // caption must be one of them.
+    captions.forEach(c => expect(['S1', 'C1', 'F1', 'K1', 'S2']).toContain(c));
+  });
+
+  it('updates the caption when the reel advances', () => {
+    mod._showOverlay();
+    const panel = document.querySelectorAll('.db-panel')[0];
+    const before = panel.querySelector('.db-caption').textContent;
+    mod._advanceReel(0, 1);
+    const after = panel.querySelector('.db-caption').textContent;
+    expect(after).not.toBe(before);
+    expect(['S1', 'C1', 'F1', 'K1', 'S2']).toContain(after);
+  });
+
+  it('restores the previous caption when scrolling back', () => {
+    mod._showOverlay();
+    const panel = document.querySelectorAll('.db-panel')[0];
+    const first = panel.querySelector('.db-caption').textContent;
+    mod._advanceReel(0, 1);
+    mod._advanceReel(0, -1);
+    expect(panel.querySelector('.db-caption').textContent).toBe(first);
+  });
+
+  it('_titleForFile looks up the session playlist', () => {
+    mod._showOverlay();
+    expect(mod._titleForFile('sport_001.mp4')).toBe('S1');
+    expect(mod._titleForFile('nonexistent.mp4')).toBe('');
+  });
+
+  it('omits the caption element when a clip has no title', () => {
+    global.FEED = [{ file: 'x.mp4', audio: false, tags: [], title: '', creator: 'A', license: 'P', source: 'https://x.com' }];
+    mod._showOverlay();
+    const panel = document.querySelectorAll('.db-panel')[0];
+    expect(panel.querySelector('.db-caption')).toBeNull();
+  });
+});
+
+// ===========================================================================
 // Sound steers to an audible clip
 // ===========================================================================
 describe('audible-clip steering', () => {

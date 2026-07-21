@@ -18,7 +18,7 @@
 // =================================================================
 
 import { readFileSync, writeFileSync, existsSync, statSync, readdirSync } from 'node:fs';
-import { execFileSync } from 'node:child_process';
+import { execFileSync, spawnSync } from 'node:child_process';
 import { dirname, join, basename } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -146,31 +146,36 @@ if (placeholderCount > 0) {
 }
 
 // ── Step 4.5: probe audio tracks ──────────────────────────────────────────
-// Most stock footage is silent; the runtime uses this flag to steer the
-// sound-target panel to a clip that can actually make sound.
+// Most stock footage either has no audio stream at all, or has a stream
+// that's pure digital silence (a dead track bundled by the encoder). A
+// stream-presence check alone can't tell those apart — it takes measuring
+// actual signal level. The runtime uses this flag to steer the sound-target
+// panel to a clip that can actually make sound.
 
-let ffprobeOk = true;
-try { execFileSync('ffprobe', ['-version'], { stdio: 'ignore' }); }
-catch { ffprobeOk = false; warn('ffprobe not found — emitting audio:false for all clips'); }
+const AUDIBLE_DB = -35; // mean_volume louder than this counts as "has sound"
+
+let ffmpegOk = true;
+try { execFileSync('ffmpeg', ['-version'], { stdio: 'ignore' }); }
+catch { ffmpegOk = false; warn('ffmpeg not found — emitting audio:false for all clips'); }
 
 const audioMap = {};
 let audioCount = 0;
 for (const f of mediaFiles) {
   let has = false;
-  if (ffprobeOk) {
-    try {
-      const out = execFileSync('ffprobe', [
-        '-v', 'quiet', '-select_streams', 'a',
-        '-show_entries', 'stream=codec_type', '-of', 'csv=p=0',
-        join(MEDIA_DIR, f),
-      ]).toString();
-      has = out.includes('audio');
-    } catch { /* treat as silent */ }
+  if (ffmpegOk) {
+    // volumedetect writes its measurement to stderr regardless of exit
+    // code; spawnSync lets us read it without exceptions in the loop.
+    const res = spawnSync('ffmpeg', [
+      '-i', join(MEDIA_DIR, f), '-af', 'volumedetect', '-f', 'null', '-',
+    ], { encoding: 'utf-8' });
+    const stderr = (res.stderr || '');
+    const m = stderr.match(/mean_volume:\s*(-?[\d.]+)\s*dB/);
+    if (m) has = parseFloat(m[1]) > AUDIBLE_DB;
   }
   audioMap[f] = has;
   if (has) audioCount++;
 }
-ok(`Audio tracks: ${audioCount}/${mediaFiles.length} clips`);
+ok(`Audible clips (mean volume > ${AUDIBLE_DB}dB): ${audioCount}/${mediaFiles.length}`);
 
 // ── Step 5: validate file sizes ───────────────────────────────────────────
 

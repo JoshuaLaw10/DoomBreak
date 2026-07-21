@@ -37,7 +37,7 @@ try {
   const page = ctx.pages()[0] || await ctx.newPage();
   await page.goto('https://chatgpt.com/', { waitUntil: 'domcontentloaded', timeout: 60000 });
 
-  const composer = page.locator('#prompt-textarea').first();
+  const composer = page.locator('#prompt-textarea:visible, #mobile-composer-prompt:visible, textarea[placeholder="Ask anything"]:visible, div[contenteditable="true"]:visible').first();
   await composer.waitFor({ state: 'visible', timeout: 45000 });
   await page.keyboard.press('Escape').catch(() => {});
   await composer.click();

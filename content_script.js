@@ -266,6 +266,15 @@ function _buildOverlay(clips) {
     '  transition:background .15s;',
     '}',
     '.db-btn:hover { background:rgba(255,255,255,.28); }',
+    /* YouTube-Shorts-style per-clip caption */
+    '.db-caption {',
+    '  position:absolute;left:12px;right:12px;bottom:58px;z-index:2;',
+    '  color:#fff;font-size:13px;font-weight:600;line-height:1.3;',
+    '  text-shadow:0 1px 3px rgba(0,0,0,.9),0 1px 10px rgba(0,0,0,.6);',
+    '  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;',
+    '  pointer-events:none;',
+    '}',
+    '#doombreak-overlay.db-pip .db-caption { font-size:11.5px;bottom:46px; }',
     /* PiP (mini player) variant — corner overlay instead of full-screen */
     '#doombreak-overlay.db-pip {',
     '  inset:auto; right:18px; bottom:18px;',
@@ -299,6 +308,7 @@ function _buildOverlay(clips) {
       return [
         '<div class="db-panel">',
         src ? '<video autoplay muted loop playsinline data-file="' + _escHtml(clip.file) + '" src="' + _escHtml(src) + '"></video>' : '',
+        src && clip.title ? '<div class="db-caption">' + _escHtml(clip.title) + '</div>' : '',
         '</div>',
       ].join('');
     }).join(''),
@@ -332,6 +342,31 @@ function _escHtml(str) {
 // scrolling up returns through that panel's history. The last-interacted
 // panel becomes the audio target when sound is on.
 // ---------------------------------------------------------------------------
+
+// Looks in the session playlist first (guaranteed to have this session's
+// clips), falling back to the full feed for robustness.
+function _titleForFile(file) {
+  for (var i = 0; i < _playlist.length; i++) {
+    if (_playlist[i].file === file) return _playlist[i].title || '';
+  }
+  var feed = (typeof FEED !== 'undefined' && FEED.length) ? FEED : [];
+  for (var j = 0; j < feed.length; j++) {
+    if (feed[j].file === file) return feed[j].title || '';
+  }
+  return '';
+}
+
+function _setCaption(panel, file) {
+  var title = _titleForFile(file);
+  var el = panel.querySelector('.db-caption');
+  if (!title) { if (el) el.remove(); return; }
+  if (!el) {
+    el = document.createElement('div');
+    el.className = 'db-caption';
+    panel.appendChild(el);
+  }
+  el.textContent = title;
+}
 
 function _makeVideo(file) {
   var v = document.createElement('video');
@@ -379,6 +414,7 @@ function _advanceReel(idx, dir, requireAudio) {
 
   var next = _makeVideo(file);
   panel.appendChild(next);
+  _setCaption(panel, file);
 
   // TikTok-style snap: old slides out, new slides in (skipped for
   // reduced-motion users and environments without Web Animations).
@@ -836,6 +872,7 @@ if (typeof module !== 'undefined') {
     _pickClips:     _pickClips,
     _advanceReel:   _advanceReel,
     _onReelWheel:   _onReelWheel,
+    _titleForFile:  _titleForFile,
     _ensureAudibleTarget: _ensureAudibleTarget,
     getPlaylist:    function() { return _playlist; },
     getSoundIdx:    function() { return _soundIdx; },

@@ -51,6 +51,14 @@ A Chrome extension (MV3) that shows a self-closing video overlay on chatgpt.com 
 
 ## 🔴 Blocked on human action
 
+**v1.5.0 (2026-07-21): reels quality pass, prompted by user play-testing feedback ("not entertaining enough" + "add YouTube-Shorts-style titles" + "no sound").**
+- Fixed the real audio bug: `audio:true` in the feed used to mean "has a stream," but several streams were pure digital silence (measured -91dB). generate-feed.mjs and source-clips.mjs now measure actual mean_volume via ffmpeg and only flag a clip audible above -35dB. Honest count: **16/112 clips are genuinely audible** — Pexels/Pixabay/Mixkit stock is mostly silent B-roll; the "focus" vibe (typing/coffee/notebook) has ZERO audible candidates found across 40 tries. Sound now steers to the next audible clip in the pool and is a no-op (not broken — just silent) when the whole filtered pool has none.
+- Fixed a real diversity bug in source-clips.mjs: it exhausted one query's full result set before trying the next, so a broad query (e.g. "crowd cheering basketball") could fill the whole candidate pool and starve the other 4 sub-queries for that tag. Rewrote it round-robin — every tag now pulls from all 5 of its queries.
+- Full re-source: 112 clips (16/tag × 7 tags, 50MB), reviewed via generated contact sheets (`npm run contact-sheet`, needs Pillow) before shipping.
+- **YouTube-Shorts-style captions**: every clip has a hand-written, specific title (not the generic search query) rendered as a caption pill on its panel; updates live as you scroll. 112/112 written from actual visual review, not generated.
+- Tests 102 → 135. Live E2E hardened against ChatGPT's variable response speed (a fast answer can auto-close the overlay mid-check) — checks degrade gracefully instead of crashing; also had to patch the composer selector after ChatGPT dropped `#prompt-textarea` for `#mobile-composer-prompt` (test-harness-only, does not affect the shipped adapter).
+- All 9 store images regenerated: `dist/brainrot-break-v1.5.0.zip` is the submission artifact.
+
 **v1.4.0 (2026-07-15): RENAMED to "Brainrot Break: Cat & Dog Reels While ChatGPT Thinks"** for store search (brainrot/cat/dog/reels/ChatGPT keywords). Repo renamed → github.com/JoshuaLaw10/BrainrotBreak (old URLs redirect for git, NOT for Pages). Privacy URL is now https://joshualaw10.github.io/BrainrotBreak/privacy.html (verified 200). Listing copy fans every vibe as a search phrase (PICK YOUR VIBE section). Sound made DOM-driven (outgoing swap video can never stay audible). Internal `doombreak-*` DOM ids intentionally unchanged. SUBMIT dist/brainrot-break-v1.4.0.zip.
 
 **Only step 6/7 remain: create the $5 dev account and submit.** Upload `dist/doombreak-v1.1.0.zip` (rebuild anytime with `npm run package`), paste copy from `STORE_LISTING.md`, pick 5 of the 6 screenshots in `store-assets/`, privacy URL: https://joshualaw10.github.io/BrainrotBreak/privacy.html

@@ -49,11 +49,11 @@ try {
 
   const page = ctx.pages()[0] || await ctx.newPage();
   await page.goto('https://chatgpt.com/', { waitUntil: 'domcontentloaded', timeout: 60000 });
-  const composer = page.locator('#prompt-textarea').first();
+  const composer = page.locator('#prompt-textarea:visible, #mobile-composer-prompt:visible, textarea[placeholder="Ask anything"]:visible, div[contenteditable="true"]:visible').first();
   await composer.waitFor({ state: 'visible', timeout: 45000 });
   await page.keyboard.press('Escape').catch(() => {});
   await composer.click();
-  await page.keyboard.type('Write a detailed 1500 word essay about the history of mapmaking across every era.', { delay: 10 });
+  await page.keyboard.type('Write an extremely detailed 3000 word essay covering the economic, social, and technological history of seafaring navigation, with a heading and several bullet points for every century from 1400 to 2000.', { delay: 10 });
   await page.keyboard.press('Enter');
 
   const overlay = page.locator('#doombreak-overlay');
@@ -63,13 +63,34 @@ try {
   await page.waitForTimeout(350); // let panels paint
   await page.screenshot({ path: join(OUT, '2-thinking.png') });
 
-  // Streak footer (read early — fast generations can auto-close the overlay
-  // before the later shots finish)
+  // SHOT 1 + 3 — poll tightly for the Typing flip starting NOW, before any
+  // other check spends the generation window. Live ChatGPT response speed
+  // varies a lot run to run; on a fast-streaming answer Thinking can be
+  // very brief, so this has to win the race immediately, not after several
+  // other awaits.
+  let caughtTyping = false, heroShotTaken = false;
+  for (let i = 0; i < 24 && (await overlay.count()); i++) {
+    const badge = await page.locator('#doombreak-badge-text').textContent().catch(() => '');
+    const hasCaption = await page.locator('#doombreak-overlay .db-caption').first().count();
+    if (hasCaption && !heroShotTaken) {
+      await page.screenshot({ path: join(OUT, '1-hero.png') });
+      heroShotTaken = true;
+    }
+    if (badge === 'Typing') {
+      await page.screenshot({ path: join(OUT, '3-typing.png') });
+      caughtTyping = true;
+      break;
+    }
+    await page.waitForTimeout(200);
+  }
+  if (!caughtTyping) console.log('  ⚠ never caught Typing badge in time — 3-typing.png not refreshed');
+  if (!heroShotTaken) console.log('  ⚠ panels never painted in time — 1-hero.png not refreshed');
+
+  // Streak footer (best-effort — a very fast answer may have already closed)
   const streakText = await page.locator('#doombreak-streak').textContent().catch(() => '');
   check('streak footer shows a count', /[0-9] breaks? today/.test(streakText || ''), '"' + streakText + '"');
 
   // Clips actually playing?
-  await page.waitForTimeout(1200);
   const playing = await page.evaluate(() => {
     const vids = [...document.querySelectorAll('#doombreak-overlay video')];
     return {
@@ -82,44 +103,55 @@ try {
   check('clips are playing', playing.playing === playing.count, playing.playing + '/' + playing.count);
   check('clips muted by default', playing.muted);
 
-  if (!(await overlay.count())) console.log('  ⚠ overlay closed early — interactive checks may be skipped');
-  // Scroll-to-advance: real wheel gesture over the middle panel swaps the clip
-  const beforeScroll = await page.evaluate(() =>
-    document.querySelectorAll('#doombreak-overlay .db-panel')[1].querySelector('video').getAttribute('data-file'));
-  const panelBox = await page.locator('#doombreak-overlay .db-panel').nth(1).boundingBox().catch(() => null);
-  if (!panelBox) throw new Error('overlay closed before scroll check — rerun (generation ended too fast)');
-  await page.mouse.move(panelBox.x + panelBox.width / 2, panelBox.y + panelBox.height / 2);
-  await page.mouse.wheel(0, 300);
-  await page.waitForTimeout(600);
-  const afterScroll = await page.evaluate(() =>
-    document.querySelectorAll('#doombreak-overlay .db-panel')[1].querySelector('video').getAttribute('data-file'));
-  check('wheel scroll advances the reel', afterScroll && afterScroll !== beforeScroll,
-    beforeScroll + ' → ' + afterScroll);
-  await page.mouse.wheel(0, -300); // scroll back
-  await page.waitForTimeout(600);
-  const backScroll = await page.evaluate(() =>
-    document.querySelectorAll('#doombreak-overlay .db-panel')[1].querySelector('video').getAttribute('data-file'));
-  check('wheel up scrolls back through history', backScroll === beforeScroll,
-    'returned to ' + backScroll);
+  // Shorts-style captions: every panel should show a non-empty title
+  const captions = await page.evaluate(() =>
+    [...document.querySelectorAll('#doombreak-overlay .db-panel')].map(p => p.querySelector('.db-caption')?.textContent || ''));
+  check('every panel shows a caption', captions.every(c => c.length > 0), JSON.stringify(captions));
 
-  // Sound toggle — audio comes from exactly one panel (the target)
-  await page.click('#doombreak-sound');
-  const unmutedCount = await page.evaluate(() =>
-    [...document.querySelectorAll('#doombreak-overlay video')].filter(v => !v.muted).length);
-  check('sound toggle unmutes exactly one panel', unmutedCount === 1, unmutedCount + ' unmuted');
-  await page.click('#doombreak-sound'); // back to muted
+  // Scroll + sound interactive checks: best-effort. Live ChatGPT response
+  // time varies run to run — a short answer can auto-close the overlay
+  // before we get here, and that's not a product bug, just bad luck on
+  // this particular generation. Skip gracefully rather than crash.
+  if (!(await overlay.count())) {
+    console.log('  ⚠ overlay already closed (fast answer) — skipping scroll + sound checks');
+  } else {
+    // Scroll-to-advance: real wheel gesture over the middle panel swaps the clip
+    const beforeScroll = await page.evaluate(() =>
+      document.querySelectorAll('#doombreak-overlay .db-panel')[1]?.querySelector('video')?.getAttribute('data-file'));
+    const panelBox = await page.locator('#doombreak-overlay .db-panel').nth(1).boundingBox().catch(() => null);
+    if (!panelBox || !beforeScroll) {
+      console.log('  ⚠ overlay closed mid-check — skipping scroll + sound checks');
+    } else {
+      await page.mouse.move(panelBox.x + panelBox.width / 2, panelBox.y + panelBox.height / 2);
+      await page.mouse.wheel(0, 300);
+      await page.waitForTimeout(600);
+      const afterScroll = await page.evaluate(() =>
+        document.querySelectorAll('#doombreak-overlay .db-panel')[1]?.querySelector('video')?.getAttribute('data-file'));
+      check('wheel scroll advances the reel', afterScroll && afterScroll !== beforeScroll,
+        beforeScroll + ' → ' + afterScroll);
+      const captionAfterScroll = await page.evaluate(() =>
+        document.querySelectorAll('#doombreak-overlay .db-panel')[1]?.querySelector('.db-caption')?.textContent);
+      check('caption updates after scroll', !!captionAfterScroll, '"' + captionAfterScroll + '"');
+      await page.mouse.wheel(0, -300); // scroll back
+      await page.waitForTimeout(600);
+      const backScroll = await page.evaluate(() =>
+        document.querySelectorAll('#doombreak-overlay .db-panel')[1]?.querySelector('video')?.getAttribute('data-file'));
+      check('wheel up scrolls back through history', backScroll === beforeScroll,
+        'returned to ' + backScroll);
 
+      if (await overlay.count()) {
+        // Sound toggle — audio comes from exactly one panel (the target)
+        await page.click('#doombreak-sound');
+        const unmutedCount = await page.evaluate(() =>
+          [...document.querySelectorAll('#doombreak-overlay video')].filter(v => !v.muted).length);
+        check('sound toggle unmutes exactly one panel', unmutedCount === 1, unmutedCount + ' unmuted');
+        await page.click('#doombreak-sound'); // back to muted
+      } else {
+        console.log('  ⚠ overlay closed before sound check — skipping');
+      }
+    }
+  }
 
-  // SHOT 3 — Typing badge
-  await page.waitForFunction(() => {
-    const el = document.getElementById('doombreak-badge-text');
-    return el && el.textContent === 'Typing';
-  }, { timeout: 45000 });
-  await page.screenshot({ path: join(OUT, '3-typing.png') });
-
-  // SHOT 1 — Hero (mid-generation, clips rolling)
-  await page.waitForTimeout(2500);
-  await page.screenshot({ path: join(OUT, '1-hero.png') });
 
   // SHOT 5 — Streak footer visible (best-effort: overlay may have closed)
   if (await overlay.count()) await page.screenshot({ path: join(OUT, '5-streak.png') });
@@ -133,10 +165,22 @@ try {
   await sw.evaluate(() => new Promise(res =>
     chrome.storage.local.set({ overlayMode: 'pip', feedTags: ['cats'] }, res)));
   await page.waitForTimeout(600);
-  await composer.click();
-  await page.keyboard.type('Now write a 300 word essay about telescopes.', { delay: 10 });
-  await page.keyboard.press('Enter');
-  await overlay.waitFor({ state: 'attached', timeout: 10000 });
+  // Retry the second send — the composer can be briefly unfocusable right
+  // after a generation finishes (ChatGPT re-renders the input area).
+  let pipOverlayUp = false;
+  for (let attempt = 0; attempt < 3 && !pipOverlayUp; attempt++) {
+    try {
+      await composer.click({ timeout: 5000 });
+      await page.keyboard.type('Now write a 300 word essay about telescopes number ' + attempt + '.', { delay: 10 });
+      await page.keyboard.press('Enter');
+      await overlay.waitFor({ state: 'attached', timeout: 8000 });
+      pipOverlayUp = true;
+    } catch {
+      console.log('  ⚠ retry ' + (attempt + 1) + '/3 sending the PiP-mode prompt');
+      await page.waitForTimeout(1000);
+    }
+  }
+  if (!pipOverlayUp) throw new Error('could not get the overlay to appear for the PiP-mode check after 3 attempts');
   await page.waitForTimeout(1500);
   const pip = await page.evaluate(() => {
     const el = document.getElementById('doombreak-overlay');

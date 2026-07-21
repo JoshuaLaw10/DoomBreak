@@ -1,6 +1,6 @@
 {
   "name": "brainrot-break",
-  "version": "1.4.0",
+  "version": "1.5.0",
   "description": "Chrome extension: cat & dog reels (and more) while ChatGPT or Gemini thinks.",
   "private": true,
   "scripts": {
@@ -15,7 +15,8 @@
     "shots": "node scripts/e2e/shots.mjs",
     "promo": "node scripts/e2e/promo.mjs",
     "verify:claude": "node scripts/e2e/verify-platform.mjs claude",
-    "verify:gemini": "node scripts/e2e/verify-platform.mjs gemini"
+    "verify:gemini": "node scripts/e2e/verify-platform.mjs gemini",
+    "contact-sheet": "python3 scripts/contact-sheet.py"
   },
   "devDependencies": {
     "@vitest/coverage-v8": "^1.6.0",

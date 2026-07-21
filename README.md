@@ -12,6 +12,7 @@ When ChatGPT is generating, you instinctively open a new tab and start scrolling
 
 - **Auto-close** — the overlay disappears the instant the AI finishes, so you never miss your answer
 - **Scrollable reels** — wheel or swipe to snap to the next clip, scroll up to go back
+- **Shorts-style captions** — every clip is titled, just like YouTube Shorts
 - **Live status badge** — Thinking → Typing as the response develops
 - **Prompt-Aware Mode** (on by default) — ask about sports, get sports clips; ask something calm, get calm clips
 - **Daily streak counter** — see how many times it pulled you back today

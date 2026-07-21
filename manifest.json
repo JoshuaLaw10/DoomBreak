@@ -1,6 +1,6 @@
 {
   "name": "Brainrot Break: Cat & Dog Reels While ChatGPT Thinks",
-  "version": "1.4.0",
+  "version": "1.5.0",
   "manifest_version": 3,
   "description": "Cat videos, dog reels, calm scenery & sports while ChatGPT or Gemini thinks. Auto-closes the moment your answer is ready.",
   "minimum_chrome_version": "116",
